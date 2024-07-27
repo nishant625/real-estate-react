@@ -10,7 +10,7 @@ import {
 } from "firebase/storage";
 import { app } from "../firebase";
 
-import {Link} from 'react-router-dom'
+import { Link } from "react-router-dom";
 import {
   updateUserStart,
   updateUserSuccess,
@@ -25,6 +25,7 @@ import {
 } from "../redux/user/userSlice";
 import { useDispatch } from "react-redux";
 function Profile() {
+  const [userListings, setUserListings] = useState([]);
   const fileRef = useRef(null);
   const [file, setFile] = useState(undefined);
   const [fileUploadError, setFileUploadError] = useState(false);
@@ -32,6 +33,8 @@ function Profile() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
   const [filePerc, setFilePerc] = useState(0);
   const [formData, setFormData] = useState({});
+
+  const [showListingsError, setShowListingsError] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const dispatch = useDispatch();
 
@@ -113,7 +116,7 @@ function Profile() {
   const handleSignOut = async () => {
     try {
       dispatch(signOutUserStart());
-      const res = await fetch('/api/auth/signout');
+      const res = await fetch("/api/auth/signout");
       const data = await res.json();
       if (data.success === false) {
         dispatch(deleteUserFailure(data.message));
@@ -122,6 +125,21 @@ function Profile() {
       dispatch(deleteUserSuccess(data));
     } catch (error) {
       dispatch(deleteUserFailure(data.message));
+    }
+  };
+
+  const handleShowListings = async () => {
+    try {
+      setShowListingsError(false);
+      const res = await fetch(`/api/user/listings/${currentUser._id}`);
+      const data = await res.json();
+      if (data.success === false) {
+        setShowListingsError(true);
+        return;
+      }
+      setUserListings(data);
+    } catch (error) {
+      setShowListingsError(true);
     }
   };
 
@@ -182,8 +200,12 @@ function Profile() {
           {loading ? "Loading..." : "Update"}
         </button>
 
-        <Link className=" bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95 " to={"/create-listing"}>
-        Create Listing</Link>
+        <Link
+          className=" bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95 "
+          to={"/create-listing"}
+        >
+          Create Listing
+        </Link>
       </form>
 
       <div className=" flex justify-between mt-5">
@@ -202,6 +224,41 @@ function Profile() {
       <p className="text-green-700 mt-5">
         {updateSuccess ? "User is updated successfully!" : ""}
       </p>
+      <button className="text-green-700 w-full " onClick={handleShowListings}>
+        Show Listings
+      </button>
+      <p className=" text-red-700 mt-5">
+        {showListingsError ? "Error showing listings" : ""}
+      </p>
+      {userListings && userListings.length > 0 && (
+        <div className=" flex flex-col gap-4 ">
+          <h1 className=" text-center mt-7 text-2xl font-semibold ">Your Listings</h1>
+          {userListings.map((listing) => (
+            <div
+              key={listing._id}
+              className=" border rounded-lg p-3 gap-4 flex justify-between items-center"
+            >
+              <Link to={`/listing/${listing._id}`}>
+                <img
+                  src={listing.imageUrls[0]}
+                  alt="Lisitng image"
+                  className=" h-16 w-16 object-contain "
+                />
+              </Link>
+              <Link
+                className=" text-slate-700  font-semibold  hover:underline truncate flex-1"
+                to={`/listing/${listing._id}`}
+              >
+                <p className="">{listing.name}</p>
+              </Link>
+              <div className="flex flex-col items-center">
+                <button className=" text-red-700 uppercase">Delete</button>
+                <button className=" text-green-500 uppercase">Edit</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
